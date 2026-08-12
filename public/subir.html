@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Publicar un perrito encontrado - Perritos Cali</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Publicar un perrito encontrado</h1>
+    <p>Sube una foto clara para que su familia pueda reconocerlo.</p>
+  </header>
+
+  <nav>
+    <a href="/">Ver perritos</a>
+    <a href="/subir.html" class="active">Publicar un perrito</a>
+  </nav>
+
+  <main>
+    <form id="form">
+      <label for="photo">Foto del perrito *</label>
+      <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required />
+      <p class="hint">Maximo 8 MB. Que se le vea bien la cara.</p>
+      <img id="preview" class="preview" alt="Vista previa" />
+
+      <label for="location">Donde lo encontraste? *</label>
+      <input type="text" id="location" name="location" placeholder="Ej: Barrio Siloe, cerca a la iglesia" required maxlength="200" />
+
+      <label for="desc">Descripcion (opcional)</label>
+      <textarea id="desc" name="desc" placeholder="Color, tamano, si tiene collar, comportamiento, etc." maxlength="500"></textarea>
+
+      <button type="submit" id="submitBtn">Publicar</button>
+      <p id="msg" class="msg"></p>
+    </form>
+  </main>
+
+  <footer>
+    Tu publicacion sera revisada antes de aparecer en la galeria principal.
+  </footer>
+
+  <script>
+    const form = document.getElementById('form');
+    const photoInput = document.getElementById('photo');
+    const preview = document.getElementById('preview');
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('submitBtn');
+
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = '';
+      msg.className = 'msg';
+      btn.disabled = true;
+      btn.textContent = 'Publicando...';
+
+      try {
+        const formData = new FormData(form);
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al publicar.');
+        }
+
+        msg.className = 'msg ok';
+        msg.textContent = data.message || 'Gracias! Tu publicacion sera revisada antes de aparecer en la galeria.';
+        form.reset();
+        preview.style.display = 'none';
+        btn.textContent = 'Publicar';
+        btn.disabled = false;
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.textContent = err.message || 'Ocurrio un error. Intenta de nuevo.';
+        btn.disabled = false;
+        btn.textContent = 'Publicar';
+      }
+    });
+  </script>
+</body>
+</html>
