@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perritos encontrados en Cali</title>
+  <meta name="description" content="Galeria de perritos encontrados tras el terremoto en Cali. Ayudanos a reunirlos con sus familias." />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Perritos encontrados en Cali</h1>
+    <p>Ayudemos a que estos perritos vuelvan a casa despues del terremoto.</p>
+  </header>
+
+  <nav>
+    <a href="/" class="active">Ver perritos</a>
+    <a href="/subir.html">Publicar un perrito</a>
+  </nav>
+
+  <main>
+    <div id="content" class="loading">Cargando publicaciones...</div>
+  </main>
+
+  <footer>
+    Si reconoces a alguno de estos perritos, comunicate con la persona que lo encontro en el lugar indicado.
+  </footer>
+
+  <script>
+    async function cargar() {
+      const content = document.getElementById('content');
+      try {
+        const res = await fetch('/api/posts');
+        if (!res.ok) throw new Error('error');
+        const posts = await res.json();
+
+        if (!posts.length) {
+          content.className = 'empty';
+          content.textContent = 'Todavia no hay perritos publicados. Se el primero en subir uno!';
+          return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        for (const p of posts) {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const img = document.createElement('img');
+          img.src = `/api/image/${p.id}`;
+          img.alt = p.desc || 'Perrito encontrado';
+          img.loading = 'lazy';
+
+          const body = document.createElement('div');
+          body.className = 'card-body';
+
+          const loc = document.createElement('p');
+          loc.className = 'card-location';
+          loc.textContent = 'Ubicacion: ' + p.location;
+
+          const desc = document.createElement('p');
+          desc.className = 'card-desc';
+          desc.textContent = p.desc || '';
+
+          const date = document.createElement('p');
+          date.className = 'card-date';
+          const d = new Date(p.date);
+          date.textContent = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+          body.appendChild(loc);
+          if (p.desc) body.appendChild(desc);
+          body.appendChild(date);
+
+          card.appendChild(img);
+          card.appendChild(body);
+          grid.appendChild(card);
+        }
+
+        content.replaceWith(grid);
+      } catch (e) {
+        content.className = 'empty';
+        content.textContent = 'No se pudieron cargar las publicaciones. Intenta recargar la pagina.';
+      }
+    }
+
+    cargar();
+  </script>
+</body>
+</html>
