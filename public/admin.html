@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Perritos Cali</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Panel de revision</h1>
+    <p>Aprueba o rechaza las publicaciones antes de que salgan al publico.</p>
+  </header>
+
+  <main>
+    <div id="loginBox" class="card" style="max-width:400px;margin:20px auto;padding:20px;">
+      <label for="pw">Contrasena de administracion</label>
+      <input type="text" id="pw" placeholder="Contrasena" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;" />
+      <button id="loginBtn" style="margin-top:14px;">Entrar</button>
+      <p id="loginMsg" class="msg err"></p>
+    </div>
+
+    <div id="panel" style="display:none;">
+      <div id="content" class="loading">Cargando pendientes...</div>
+    </div>
+  </main>
+
+  <script>
+    const loginBox = document.getElementById('loginBox');
+    const panel = document.getElementById('panel');
+    const content = document.getElementById('content');
+    const loginMsg = document.getElementById('loginMsg');
+
+    function getPw() { return localStorage.getItem('adminPw') || ''; }
+    function setPw(v) { localStorage.setItem('adminPw', v); }
+
+    async function cargarPendientes() {
+      content.className = 'loading';
+      content.textContent = 'Cargando pendientes...';
+      try {
+        const res = await fetch('/api/admin/pending', {
+          headers: { 'x-admin-password': getPw() },
+        });
+        if (res.status === 401) {
+          localStorage.removeItem('adminPw');
+          loginBox.style.display = 'block';
+          panel.style.display = 'none';
+          loginMsg.textContent = 'Contrasena incorrecta.';
+          return;
+        }
+        const posts = await res.json();
+
+        if (!posts.length) {
+          content.className = 'empty';
+          content.textContent = 'No hay publicaciones pendientes por revisar.';
+          return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        for (const p of posts) {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const img = document.createElement('img');
+          img.src = `/api/image/${p.id}`;
+          img.alt = p.desc || 'Perrito';
+
+          const body = document.createElement('div');
+          body.className = 'card-body';
+
+          const loc = document.createElement('p');
+          loc.className = 'card-location';
+          loc.textContent = 'Ubicacion: ' + p.location;
+
+          const desc = document.createElement('p');
+          desc.className = 'card-desc';
+          desc.textContent = p.desc || '';
+
+          const actions = document.createElement('div');
+          actions.style.display = 'flex';
+          actions.style.gap = '8px';
+          actions.style.marginTop = '10px';
+
+          const aprobarBtn = document.createElement('button');
+          aprobarBtn.textContent = 'Aprobar';
+          aprobarBtn.style.margin = '0';
+          aprobarBtn.style.background = '#1a7a3a';
+
+          const rechazarBtn = document.createElement('button');
+          rechazarBtn.textContent = 'Rechazar';
+          rechazarBtn.style.margin = '0';
+          rechazarBtn.style.background = '#c0392b';
+
+          async function accion(tipo) {
+            aprobarBtn.disabled = true;
+            rechazarBtn.disabled = true;
+            try {
+              const res = await fetch('/api/admin/action', {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/json',
+                  'x-admin-password': getPw(),
+                },
+                body: JSON.stringify({ id: p.id, action: tipo }),
+              });
+              if (!res.ok) throw new Error('error');
+              card.remove();
+              if (!grid.children.length) cargarPendientes();
+            } catch (e) {
+              alert('No se pudo procesar. Intenta de nuevo.');
+              aprobarBtn.disabled = false;
+              rechazarBtn.disabled = false;
+            }
+          }
+
+          aprobarBtn.addEventListener('click', () => accion('aprobar'));
+          rechazarBtn.addEventListener('click', () => accion('rechazar'));
+
+          actions.appendChild(aprobarBtn);
+          actions.appendChild(rechazarBtn);
+
+          body.appendChild(loc);
+          if (p.desc) body.appendChild(desc);
+          body.appendChild(actions);
+
+          card.appendChild(img);
+          card.appendChild(body);
+          grid.appendChild(card);
+        }
+
+        content.replaceWith(grid);
+        content.id = 'content';
+      } catch (e) {
+        content.className = 'empty';
+        content.textContent = 'Error al cargar. Intenta recargar.';
+      }
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const pw = document.getElementById('pw').value.trim();
+      if (!pw) return;
+      setPw(pw);
+      loginBox.style.display = 'none';
+      panel.style.display = 'block';
+      cargarPendientes();
+    });
+
+    if (getPw()) {
+      loginBox.style.display = 'none';
+      panel.style.display = 'block';
+      cargarPendientes();
+    }
+  </script>
+</body>
+</html>
